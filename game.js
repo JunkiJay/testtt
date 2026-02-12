@@ -289,6 +289,14 @@
     return t;
   }
 
+  function randomSeedHex(bytesLen = 16) {
+    const bytes = new Uint8Array(bytesLen);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
   function decodeTokenPayload(token) {
     const [p] = token.split(".");
     const bytes = b64urlToBytes(p);
@@ -299,10 +307,18 @@
   async function prepareRoundFromToken() {
     const token = readTokenFromUrl();
     if (!token) {
-      elStatus.textContent = "Нет токена раунда. Открой игру через бота (/play).";
-      btnStart.disabled = true;
+      // Temporary mode: allow playing without backend-issued token
+      round.token = null;
+      round.seed = randomSeedHex(16);
+      round.volK = 3;
+      const crashX100 = await crashX100FromSeed(round.seed, round.volK);
+      round.crashX100 = crashX100;
+      round.crashMs = msForMult(crashX100 / 100);
+      elStatus.textContent = "Режим без токена: раунд сгенерен локально. Введи ставку и нажми Start.";
+      btnStart.disabled = false;
       return;
     }
+
     round.token = token;
 
     const payload = decodeTokenPayload(token);
@@ -367,7 +383,9 @@
     try {
       const payload = {
         kind: "crash_v1",
-        t: round.token,
+        ...(round.token ? { t: round.token } : {}),
+        seed: round.seed,
+        volatility: 0.6,
         bet: round.bet,
         auto_x100: round.autoX100,
         ...extra,
