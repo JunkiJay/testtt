@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ракетка</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <div id="hud">
+      <div id="title">Ракетка</div>
+      <div id="score">0</div>
+    </div>
+
+    <canvas id="game"></canvas>
+
+    <div id="overlay" class="show">
+      <div class="card">
+        <div class="h1">Мини-игра</div>
+        <div class="p">Веди ракетку пальцем/мышью и отбивай мяч.</div>
+        <button id="btnStart" class="btn primary">Играть</button>
+        <div class="small">После игры можно сохранить результат в боте.</div>
+      </div>
+    </div>
+
+    <div id="gameover" class="hidden">
+      <div class="card">
+        <div class="h1">Игра окончена</div>
+        <div class="p">Счёт: <span id="finalScore">0</span></div>
+        <div class="row">
+          <button id="btnAgain" class="btn">Играть снова</button>
+          <button id="btnSend" class="btn primary">Сохранить</button>
+        </div>
+        <div id="sendHint" class="small"></div>
+      </div>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
