@@ -165,6 +165,17 @@
     sent: false,
   };
 
+  function setupNewCrashRound({ keepToken = true } = {}) {
+    // Generate a new random seed every round (no page refresh needed)
+    if (!keepToken) round.token = null;
+    round.seed = randomSeedHex(16);
+    // volK is already set from token (if any) or defaults to 3
+    return crashX100FromSeed(round.seed, round.volK).then((crashX100) => {
+      round.crashX100 = crashX100;
+      round.crashMs = msForMult(crashX100 / 100);
+    });
+  }
+
   function getPlayBottomY() {
     // Keep rocket above the bottom panel
     const bottom = Math.min(panelTop - 12, H - 12 - safeBottom);
@@ -368,12 +379,10 @@
     if (!token) {
       // Temporary mode: allow playing without backend-issued token
       round.token = null;
-      round.seed = randomSeedHex(16);
       round.volK = 3;
-      const crashX100 = await crashX100FromSeed(round.seed, round.volK);
-      round.crashX100 = crashX100;
-      round.crashMs = msForMult(crashX100 / 100);
-      elStatus.textContent = "Режим без токена: раунд сгенерен локально. Введи ставку и нажми Start.";
+      await setupNewCrashRound({ keepToken: false });
+      elStatus.textContent =
+        "Режим без токена: коэффициент раунда генерируется локально. Введи ставку и нажми Start.";
       btnStart.disabled = false;
       return;
     }
@@ -381,15 +390,13 @@
     round.token = token;
 
     const payload = decodeTokenPayload(token);
-    round.seed = String(payload.seed || "");
+    // We keep token only for identification, but generate a fresh seed each round
     const vol = Number(payload.vol || 0.6);
     if (!Number.isFinite(vol)) throw new Error("bad volatility");
     // map vol 0..1 to k 5..1
     round.volK = clamp(5 - Math.round(vol * 4), 1, 5);
 
-    const crashX100 = await crashX100FromSeed(round.seed, round.volK);
-    round.crashX100 = crashX100;
-    round.crashMs = msForMult(crashX100 / 100);
+    await setupNewCrashRound({ keepToken: true });
 
     elStatus.textContent = "Готово. Введи ставку и нажми Start.";
   }
@@ -402,19 +409,32 @@
       return;
     }
     const auto = parseMoneyLike(elAuto.value);
-    round.bet = bet;
-    round.autoX100 = auto && auto >= 1.01 ? Math.floor(auto * 100) : null;
-    round.startedAt = performance.now();
-    round.running = true;
-    round.playerCashedOut = false;
-    round.cashoutMs = null;
-    round.sent = false;
-
+    // New crash coefficient each Start, without page refresh
     btnStart.disabled = true;
-    btnCash.disabled = false;
-    elStatus.textContent = "Ракета летит… успей забрать!";
-    beep("start");
-    raf = requestAnimationFrame(loop);
+    btnCash.disabled = true;
+    elStatus.textContent = "Подготовка раунда…";
+
+    setupNewCrashRound({ keepToken: true })
+      .then(() => {
+        round.bet = bet;
+        round.autoX100 = auto && auto >= 1.01 ? Math.floor(auto * 100) : null;
+        round.startedAt = performance.now();
+        round.running = true;
+        round.playerCashedOut = false;
+        round.cashoutMs = null;
+        round.sent = false;
+
+        btnStart.disabled = true;
+        btnCash.disabled = false;
+        elStatus.textContent = "Ракета летит… успей забрать!";
+        beep("start");
+        raf = requestAnimationFrame(loop);
+      })
+      .catch((e) => {
+        elStatus.textContent = `Ошибка подготовки: ${String(e)}`;
+        btnStart.disabled = false;
+        btnCash.disabled = true;
+      });
   }
 
   function doCashOut(elapsedMs, isAuto) {
