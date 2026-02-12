@@ -3,37 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Ракетка</title>
+    <title>Lucky Jet / Ракетка</title>
     <link rel="stylesheet" href="./style.css" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="hud">
-      <div id="title">Ракетка</div>
-      <div id="score">0</div>
+      <div id="title">Lucky Jet</div>
+      <div id="mult">1.00×</div>
     </div>
 
     <canvas id="game"></canvas>
 
-    <div id="overlay" class="show">
+    <div id="panel">
       <div class="card">
-        <div class="h1">Мини-игра</div>
-        <div class="p">Веди ракетку пальцем/мышью и отбивай мяч.</div>
-        <button id="btnStart" class="btn primary">Играть</button>
-        <div class="small">После игры можно сохранить результат в боте.</div>
+        <div class="grid">
+          <label class="field">
+            <div class="label">Ставка</div>
+            <input id="bet" inputmode="decimal" value="10" />
+          </label>
+          <label class="field">
+            <div class="label">Авто‑Cash Out (×)</div>
+            <input id="auto" inputmode="decimal" placeholder="—" />
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="btnStart" class="btn primary">Ставка / Start</button>
+          <button id="btnCash" class="btn" disabled>Cash Out</button>
+        </div>
+
+        <div class="small" id="status"></div>
       </div>
     </div>
 
-    <div id="gameover" class="hidden">
-      <div class="card">
-        <div class="h1">Игра окончена</div>
-        <div class="p">Счёт: <span id="finalScore">0</span></div>
-        <div class="row">
-          <button id="btnAgain" class="btn">Играть снова</button>
-          <button id="btnSend" class="btn primary">Сохранить</button>
-        </div>
-        <div id="sendHint" class="small"></div>
-      </div>
+    <div id="historyWrap">
+      <div id="historyTitle">История</div>
+      <div id="history"></div>
     </div>
 
     <script src="./game.js"></script>

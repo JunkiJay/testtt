@@ -5,6 +5,8 @@
   --muted: rgba(233, 240, 255, 0.72);
   --accent: #ff3d8d;
   --accent2: #30d1ff;
+  --warn: #ffd43b;
+  --bad: #ff4d4d;
 }
 
 * {
@@ -62,19 +64,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-#overlay,
-#gameover {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  z-index: 3;
+#mult {
+  min-width: 92px;
+  text-align: right;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
-#overlay.hidden,
-#gameover.hidden {
-  display: none;
+#panel {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
 }
 
 .card {
@@ -108,6 +114,83 @@ body {
 .row {
   display: flex;
   gap: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.field .label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+input {
+  width: 100%;
+  border-radius: 14px;
+  padding: 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  font-weight: 800;
+  outline: none;
+}
+
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#historyWrap {
+  position: fixed;
+  top: 62px;
+  left: 12px;
+  right: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+#historyTitle {
+  display: inline-block;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+#history {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.good {
+  border-color: rgba(48, 209, 255, 0.55);
+}
+.chip.bad {
+  border-color: rgba(255, 77, 77, 0.55);
+}
+
+@media (max-width: 360px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn {
