@@ -18,10 +18,13 @@
   const elAuto = document.getElementById("auto");
   const btnStart = document.getElementById("btnStart");
   const btnCash = document.getElementById("btnCash");
+  const elPanel = document.getElementById("panel");
 
   let W = 0;
   let H = 0;
   let raf = 0;
+  let panelTop = 0;
+  let safeBottom = 0;
 
   // ----- Provably-ish crash (deterministic from seed) -----
   const B52 = 2n ** 52n;
@@ -121,9 +124,9 @@
     }
   }
 
-  function addHistoryChip(multX100, cashed) {
+  function addHistoryChip(multX100, kind) {
     const div = document.createElement("div");
-    div.className = `chip ${cashed ? "good" : "bad"}`;
+    div.className = `chip ${kind}`;
     div.textContent = `${(multX100 / 100).toFixed(2)}×`;
     elHistory.prepend(div);
     while (elHistory.children.length > 12) elHistory.removeChild(elHistory.lastChild);
@@ -142,7 +145,9 @@
     canvas.style.height = `${H}px`;
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
 
-    // nothing else
+    const rect = elPanel?.getBoundingClientRect?.();
+    panelTop = rect ? rect.top : H;
+    safeBottom = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-bottom") || "0") || 0;
   }
 
   const round = {
@@ -155,9 +160,92 @@
     crashMs: 0,
     bet: 0,
     autoX100: null,
-    cashedOut: false,
+    playerCashedOut: false,
     cashoutMs: null,
+    sent: false,
   };
+
+  function getPlayBottomY() {
+    // Keep rocket above the bottom panel
+    const bottom = Math.min(panelTop - 12, H - 12 - safeBottom);
+    return clamp(bottom, 200, H);
+  }
+
+  function drawRocket(x, y, t, running, crashed) {
+    const scale = clamp(W / 430, 0.85, 1.15);
+    ctx.save();
+    ctx.translate(x, y);
+    // slight tilt up-right
+    ctx.rotate(-0.12);
+    ctx.scale(scale, scale);
+
+    // flame
+    const flameLen = running ? 30 + 8 * Math.sin(t / 80) : 10;
+    ctx.globalAlpha = running ? 0.95 : 0.35;
+    const flame = ctx.createLinearGradient(-28 - flameLen, 0, -28, 0);
+    flame.addColorStop(0, "rgba(255,61,141,0)");
+    flame.addColorStop(0.55, "rgba(255,212,59,0.85)");
+    flame.addColorStop(1, "rgba(48,209,255,0.85)");
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.moveTo(-28, 0);
+    ctx.quadraticCurveTo(-28 - flameLen * 0.55, 10, -28 - flameLen, 0);
+    ctx.quadraticCurveTo(-28 - flameLen * 0.55, -10, -28, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // body
+    const body = ctx.createLinearGradient(-10, -26, 34, 26);
+    body.addColorStop(0, "#30d1ff");
+    body.addColorStop(1, "#ff3d8d");
+    ctx.fillStyle = body;
+    roundRect(ctx, -14, -16, 56, 32, 16);
+    ctx.fill();
+
+    // nose cone
+    ctx.fillStyle = "#e9f0ff";
+    ctx.beginPath();
+    ctx.moveTo(42, 0);
+    ctx.lineTo(62, 11);
+    ctx.lineTo(62, -11);
+    ctx.closePath();
+    ctx.fill();
+
+    // fins
+    ctx.fillStyle = "rgba(233,240,255,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(0, 14);
+    ctx.lineTo(14, 14);
+    ctx.lineTo(6, 28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, -14);
+    ctx.lineTo(14, -14);
+    ctx.lineTo(6, -28);
+    ctx.closePath();
+    ctx.fill();
+
+    // window
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = "#0b0f14";
+    ctx.beginPath();
+    ctx.arc(10, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    if (crashed) {
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = "rgba(255,77,77,0.22)";
+      ctx.beginPath();
+      ctx.arc(30, 0, 44, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
 
   function draw() {
     ctx.fillStyle = "#0b0f14";
@@ -187,7 +275,8 @@
     const t = round.running ? performance.now() - round.startedAt : 0;
     const m = round.running ? multAtMs(t) : 1;
     const yNorm = Math.log10(Math.max(1, m)) / Math.log10(50); // 0..1
-    const y = clamp(H - 120 - yNorm * (H - 220), 90, H - 140);
+    const playBottom = getPlayBottomY();
+    const y = clamp(playBottom - 70 - yNorm * (playBottom - 180), 90, playBottom - 60);
     const x = W * 0.32 + yNorm * (W * 0.35);
 
     // trail
@@ -203,40 +292,8 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // rocket body
-    const body = ctx.createLinearGradient(x - 22, y - 22, x + 22, y + 22);
-    body.addColorStop(0, "#30d1ff");
-    body.addColorStop(1, "#ff3d8d");
-    ctx.fillStyle = body;
-    roundRect(ctx, x - 18, y - 14, 52, 28, 14);
-    ctx.fill();
-
-    // nose
-    ctx.fillStyle = "#e9f0ff";
-    ctx.beginPath();
-    ctx.moveTo(x + 34, y);
-    ctx.lineTo(x + 54, y + 10);
-    ctx.lineTo(x + 54, y - 10);
-    ctx.closePath();
-    ctx.fill();
-
-    // window
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = "#0b0f14";
-    ctx.beginPath();
-    ctx.arc(x + 8, y, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // crash effect
-    if (!round.running && round.crashX100 > 0 && !round.cashedOut) {
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = "rgba(255,77,77,0.22)";
-      ctx.beginPath();
-      ctx.arc(x + 22, y, 44, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
+    // rocket (fuller look)
+    drawRocket(x, y, performance.now(), round.running, !round.running && round.crashX100 > 0 && !round.playerCashedOut);
   }
 
   function loop(ts) {
@@ -248,23 +305,25 @@
     // crash?
     if (elapsed >= round.crashMs) {
       round.running = false;
-      round.cashedOut = false;
-      round.cashoutMs = null;
+      const playerWon = round.playerCashedOut;
       elMult.textContent = fmtX(round.crashX100 / 100);
-      elStatus.textContent = "💥 Crash! Ставка сгорела.";
+      elStatus.textContent = playerWon ? `💥 Crash на ${fmtX(round.crashX100 / 100)}.` : "💥 Crash! Ставка сгорела.";
       btnStart.disabled = false;
       btnCash.disabled = true;
       beep("crash");
-      addHistoryChip(round.crashX100, false);
-      sendResultToBot({ cashed_out: false, cashout_ms: Math.floor(round.crashMs) });
+      // History should show crash multipliers
+      addHistoryChip(round.crashX100, round.crashX100 >= 200 ? "good" : "bad");
+      if (!round.sent && !playerWon) {
+        round.sent = true;
+        sendResultToBot({ cashed_out: false, cashout_ms: Math.floor(round.crashMs) });
+      }
       draw();
       return;
     }
 
     // auto cashout
-    if (round.autoX100 && Math.floor(m * 100) >= round.autoX100) {
+    if (!round.playerCashedOut && round.autoX100 && Math.floor(m * 100) >= round.autoX100) {
       doCashOut(elapsed, true);
-      return;
     }
 
     draw();
@@ -347,8 +406,9 @@
     round.autoX100 = auto && auto >= 1.01 ? Math.floor(auto * 100) : null;
     round.startedAt = performance.now();
     round.running = true;
-    round.cashedOut = false;
+    round.playerCashedOut = false;
     round.cashoutMs = null;
+    round.sent = false;
 
     btnStart.disabled = true;
     btnCash.disabled = false;
@@ -358,24 +418,23 @@
   }
 
   function doCashOut(elapsedMs, isAuto) {
-    if (!round.running) return;
-    round.running = false;
-    round.cashedOut = true;
+    if (!round.running || round.playerCashedOut) return;
+    round.playerCashedOut = true;
     round.cashoutMs = Math.floor(elapsedMs);
-    cancelAnimationFrame(raf);
 
     const m = multAtMs(elapsedMs);
     const mX100 = Math.floor(m * 100);
-    elMult.textContent = fmtX(mX100 / 100);
-    btnStart.disabled = false;
+    btnStart.disabled = true;
     btnCash.disabled = true;
     beep("cash");
-    addHistoryChip(mX100, true);
 
     const win = round.bet * (mX100 / 100);
-    elStatus.textContent = `${isAuto ? "🤖 " : ""}Cash Out на ${fmtX(mX100 / 100)}. Выигрыш: ${win.toFixed(2)}`;
+    elStatus.textContent = `${isAuto ? "🤖 " : ""}Cash Out на ${fmtX(mX100 / 100)}. Выигрыш: ${win.toFixed(2)}. Ждём crash…`;
 
-    sendResultToBot({ cashed_out: true, cashout_ms: round.cashoutMs });
+    if (!round.sent) {
+      round.sent = true;
+      sendResultToBot({ cashed_out: true, cashout_ms: round.cashoutMs });
+    }
     draw();
   }
 
